@@ -268,10 +268,9 @@ class GitBlob(GitObject):
 def object_find(repo, name, fmt=None, follow=True):
     return name
 
-# Key-Value List with Message
-
 
 def kvlm_parse(raw, start=0, dct=None):
+    # Key-Value List with Message
     if not dct:
         dct = collections.OrderedDict()
 
