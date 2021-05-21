@@ -27,6 +27,10 @@ argsp.add_argument("-t", metavar="type", dest="type", choice=[
 argsp.add_argument("-w", dest="write", action="store_true",
                    help="Actually write the object into the database")
 argsp.add_argument("path", help="Read object from <file>")
+argsp = argsubparsers.add_parser(
+    "log", help="Display history of a given commit")
+argsp.add_argument("commit", default="HEAD", nargs="?",
+                   help="Commit to start at")
 
 
 def main(argv=sys.argv[1:]):
@@ -393,3 +397,38 @@ def object_hash(f, fmt, repo=None):
         raise Exception("Unknown type {}".format(fmt))
 
     return object_write(obj, repo)
+
+#############################################################
+# wyag log
+# usage: wyag log <commit id>
+#############################################################
+
+
+def cmd_log(args):
+    repo = repo_find()
+
+    print("digraph wyaglog(")
+    log_graphviz(repo, object_find(repo, args.commit), set())
+    print(")")
+
+
+def log_graphviz(repo, sha, seen):
+    if sha in seen:
+        return
+    seen.add(sha)
+
+    commit = object_read(repo, sha)
+    assert(commit.fmt == b'commit')
+
+    if not b'parent' in commit.kvlm.keys():
+        return  # initial commit
+
+    parents = commit.kvlm[b'parent']
+
+    if type(parents) != list:
+        parents = [parents]
+
+    for p in parents:
+        p = p.decode("ascii")
+        print("c_{} -> c_{}".format(sha, p))
+        log_graphviz(repo, p, seen)
