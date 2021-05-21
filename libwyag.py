@@ -225,6 +225,23 @@ class GitCommit(GitObject):
         return kvlm_serialize(self.kvml)
 
 
+class GitTree(GitObject):
+    fmt = b'tree'
+
+    def deserialize(self, data):
+        self.items = tree_parse(data)
+
+    def serialize(self):
+        return tree_serialize(self)
+
+
+class GitTreeLeaf(object):
+    def __init__(self, mode, path, sha):
+        self.mode = mode
+        self.path = path
+        self.sha = sha
+
+
 def object_read(repo, sha):
     """Read object sha from Git repository repo. Return a GitObject whose exact type depends on the object."""
     path = repo_file(repo, "objects", sha[0:2], sha[2:])
@@ -339,6 +356,44 @@ def kvlm_serialize(kvlm):
 
     ret += b'\n' + kvlm[b'']  # append message
 
+    return ret
+
+
+def tree_parse(raw):
+    pos = 0
+    max = len(raw)
+    ret = list()
+    while pos < max:
+        pos, data = tree_parse_one(raw, pos)
+        ret.append(data)
+
+    return ret
+
+
+def tree_parse_one(raw, start=0):
+    # format: [mode] space [path] 0x00 [sha-1]
+    x = raw.find(b' ', start)
+    assert(x - start == 5 or x - start == 6)
+
+    mode = raw[start:x]
+
+    y = raw.find(b'\x00', x)
+    path = raw[x+1:y]
+
+    sha = hex(int.from_bytes(raw[y+1:y+21], "big"))[2:]
+
+    return y + 21, GitTreeLeaf(mode, path, sha)
+
+
+def tree_serialize(obj):
+    ret = b''
+    for i in obj.items:
+        ret += i.mode
+        ret += b' '
+        ret += i.path
+        ret += b'\x00'
+        sha = int(i.sha, 16)
+        ret += sha.to_bytes(20, byteorder="big")
     return ret
 
 #############################################################
