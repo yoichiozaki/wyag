@@ -37,6 +37,7 @@ argsp = argsubparsers.add_parser(
     "checkout", help="Checkout a commit inside of a directory")
 argsp.add_argument("commit", help="The commit or tree to checkout")
 argsp.add_argument("path", help="The empty directory to checkout on")
+argsp = argsubparsers.add_parser("show-ref", help="List references")
 
 
 def main(argv=sys.argv[1:]):
@@ -416,6 +417,30 @@ def tree_checkout(repo, tree, path):
                 f.write(obj.blobdata)
 
 
+def ref_resolve(repo, ref):
+    with open(repo_file(repo, ref), 'r') as f:
+        data = f.read()[:-1]  # trim '\n'
+    if data.startswith("ref: "):
+        return ref_resolve(repo, data[5:])
+    else:
+        return data
+
+
+def ref_list(repo, path=None):
+    if not path:
+        path = repo_dir(repo, "refs")
+
+    ret = collections.OrderedDict()
+
+    for f in sorted(os.listdir(path)):
+        can = os.path.join(path, f)
+        if os.path.isdir(can):
+            ret[f] = ref_list(repo, can)
+        else:
+            ret[f] = ref_resolve(repo, can)
+
+    return ret
+
 #############################################################
 # wyag init
 # usage: wyag init <path>
@@ -548,3 +573,27 @@ def cmd_checkout(args):
         os.makedirs(args.path)
 
     tree_checkout(repo, obj, os.path.realpath(args.path).encode())
+
+#############################################################
+# wyag show-ref
+# usage: wyag show-ref
+#############################################################
+
+
+def cmd_show_ref(args):
+    repo = repo_find()
+    refs = ref_list(repo)
+    show_ref(repo, refs, prefix="refs")
+
+
+def show_ref(repo, refs, with_hash=True, prefix=""):
+    for k, v in refs.items():
+        if type(v) == str:
+            print("{}{}{}".format(
+                v + " " if with_hash else "",
+                prefix + "/" if prefix else "",
+                k
+            ))
+        else:
+            show_ref(repo, v, with_hash=with_hash, prefix="{}{}{}".format(
+                prefix, "/" if prefix else "", k))
