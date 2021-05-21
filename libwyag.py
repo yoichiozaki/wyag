@@ -211,6 +211,16 @@ class GitBlob(GitObject):
         self.blobdata = data
 
 
+class GitCommit(GitObject):
+    fmt = b'commit'
+
+    def deserialize(self, data):
+        self.kvlm = kvlm_parse(data)
+
+    def serialize(self):
+        return kvlm_serialize(self.kvml)
+
+
 def object_read(repo, sha):
     """Read object sha from Git repository repo. Return a GitObject whose exact type depends on the object."""
     path = repo_file(repo, "objects", sha[0:2], sha[2:])
