@@ -201,6 +201,16 @@ class GitObject(object):
         raise Exception("Unimplemented!")
 
 
+class GitBlob(GitObject):
+    fmt = b'blob'
+
+    def serialize(self):
+        return self.blobdata
+
+    def deserialize(self, data):
+        self.blobdata = data
+
+
 def object_read(repo, sha):
     """Read object sha from Git repository repo. Return a GitObject whose exact type depends on the object."""
     path = repo_file(repo, "objects", sha[0:2], sha[2:])
@@ -253,16 +263,6 @@ def object_write(obj, actually_write=True):
             f.write(zlib.compress(result))
 
     return sha
-
-
-class GitBlob(GitObject):
-    fmt = b'blob'
-
-    def serialize(self):
-        return self.blobdata
-
-    def deserialize(self, data):
-        self.blobdata = data
 
 
 def object_find(repo, name, fmt=None, follow=True):
