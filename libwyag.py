@@ -171,6 +171,91 @@ def repo_find(path=".", required=True):
 
     return repo_find(parent, required=required)
 
+
+class GitObject(object):
+    repo = None
+
+    def __init__(self, repo, data=None):
+        self.repo = repo
+        if data != None:
+            self.deserialize(data)
+
+    def serialize(self):
+        """This function MUST be implemented by subclasses.
+        It must read the object's contents from self.data, a byte string, and do whatever it takes to covert it into a meaningful representation. What exactly that means depends on each subclass."""
+        raise Exception("Unimplemented!")
+
+    def deserialize(self, data):
+        raise Exception("Unimplemented!")
+
+
+def object_read(repo, sha):
+    """Read object sha from Git repository repo. Return a GitObject whose exact type depends on the object."""
+    path = repo_file(repo, "objects", sha[0:2], sha[2:])
+
+    # object format
+    # +----------+--------------------------------------------------------------------+
+    # | address  |                                                                    |
+    # +----------+--------------------------------------------------------------------+
+    # | 00000000 | 63 6f 6d 6d 69 74 20 31  30 38 36 00 74 72 65 65 | commit 1086.tree|
+    # | 00000010 | 20 32 39 66 66 31 36 63  39 63 31 34 65 32 36 35 | 29ff16c9c14e265 |
+    # | 00000020 | 32 62 32 32 66 38 62 37  38 62 62 30 38 61 35 61 | 2b22f8b78bb08a5a|
+    # +----------+--------------------------------------------------------------------+
+
+    with open(path, "rb") as f:
+        raw = zlib.decompress(f.read())
+
+        x = raw.find(b' ')
+        fmt = raw[0:x]  # object type
+
+        y = raw.find(b'\x00', x)
+        size = int(raw[x:y].decode("ascii"))
+        if size != len(raw) - y - 1:
+            raise Exception("Malformed object {}: bad length".format(sha))
+
+        if fmt == b'commit':
+            c = GitCommit
+        elif fmt == b'tree':
+            c = GitTree
+        elif fmt == b'tag':
+            c = GitTag
+        elif fmt == b'blob':
+            c = GitBlob
+        else:
+            raise Exception("Unknown type {} for object {}".format(
+                fmt.decode("ascii"), sha))
+
+        return c(repo, raw[y+1:])
+
+
+def object_write(obj, actually_write=True):
+    data = obj.serialize()
+    result = obj.fmt + b' ' + str(len(data)).encode() + b'\x00' + data
+    sha = hashlib.sha1(result).hexdigest()
+
+    if actually_write:
+        path = repo_file(obj.repo, "objects",
+                         sha[0:2], sha[2:], mkdir=actually_write)
+
+        with open(path, 'wb') as f:
+            f.write(zlib.compress(result))
+
+    return sha
+
+
+class GitBlob(GitObject):
+    fmt = b'blob'
+
+    def serialize(self):
+        return self.blobdata
+
+    def deserialize(self, data):
+        self.blobdata = data
+
+
+def object_find(repo, name, fmt=None, follow=True):
+    return name
+
 #############################################################
 # wyag init
 # usage: wyag init <path>
