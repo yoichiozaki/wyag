@@ -268,6 +268,66 @@ class GitBlob(GitObject):
 def object_find(repo, name, fmt=None, follow=True):
     return name
 
+# Key-Value List with Message
+
+
+def kvlm_parse(raw, start=0, dct=None):
+    if not dct:
+        dct = collections.OrderedDict()
+
+    spc = raw.find(b' ', start)  # space
+    nl = raw.find(b'\n', start)  # new line
+
+    # if space appers before newline, there is a keyword
+
+    # basecase
+    # if newline appers first (or there is no space at all, in which case return -1), there is a blank line. A blank line means the remainder of the data is message.
+    if spc < 0 or nl < spc:
+        assert(nl == start)
+        dct[b''] = raw[start+1:]  # '': message...
+        return dct
+
+    # read keyword
+    key = raw[start:spc]
+
+    # find the end of the value
+    end = start
+    while True:
+        end = raw.find(b'\n', end + 1)
+        if raw[end + 1] != ord(' '):
+            break
+
+    # read value
+    value = raw[spc+1:end].replace(b'\n', b'\n')
+
+    if key in dct:  # do not overwrite the existing data
+        if type(dct[key]) == list:
+            dct[key].append(value)
+        else:
+            dct[key] = [dct[key], value]
+    else:
+        dct[key] = value
+
+    return kvlm_parse(raw, start=end+1, dct=dct)
+
+
+def kvlm_serialize(kvlm):
+    ret = b''
+
+    for k in kvlm.keys():
+        if k == b'':
+            continue  # skip the message itself
+        val = kvlm[k]
+        if type(val) != list:
+            val = [val]
+
+        for v in val:
+            ret += k + b' ' + (v.replace(b'\n', b'\n')) + b'\n'
+
+    ret += b'\n' + kvlm[b'']  # append message
+
+    return ret
+
 #############################################################
 # wyag init
 # usage: wyag init <path>
