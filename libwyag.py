@@ -44,6 +44,11 @@ argsp.add_argument("-a", action="store_true",
 argsp.add_argument("name", nargs="?", help="The new tag's name")
 argsp.add_argument("object", default="HEAD", nargs="?",
                    help="The object the nte tag will point to")
+argsp = argsubparsers(
+    "rev-parse", help="Parse revision (or other objects) identifiers")
+argsp.add_argument("--wyag-type", metavar="type", dest="type",
+                   choices=["blob", "commit", "tag", "tree"], default=None, help="Specify the expected type")
+argsp.add_argument("name", help="The name to parse")
 
 
 def main(argv=sys.argv[1:]):
@@ -692,3 +697,17 @@ def cmd_tag(args):
 
 # TODO: implement tag_create()
 # def tag_create()
+
+#############################################################
+# wyag rev-parse
+# usage: wyag rev-parse [--wyag-type <type>] <name>
+#############################################################
+
+
+def cmd_rev_parse(args):
+    if args.type:
+        fmt = args.type.encode()
+
+    repo = repo_find()
+
+    print(object_find(repo, args.name, args.type, follow=True))
