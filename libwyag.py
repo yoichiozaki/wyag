@@ -249,6 +249,10 @@ class GitTreeLeaf(object):
         self.sha = sha
 
 
+class GitTag(GitCommit):
+    fmt = b'tag'
+
+
 def object_read(repo, sha):
     """Read object sha from Git repository repo. Return a GitObject whose exact type depends on the object."""
     path = repo_file(repo, "objects", sha[0:2], sha[2:])
