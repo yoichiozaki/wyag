@@ -31,6 +31,8 @@ argsp = argsubparsers.add_parser(
     "log", help="Display history of a given commit")
 argsp.add_argument("commit", default="HEAD", nargs="?",
                    help="Commit to start at")
+argsp = argsubparsers.add_parser("ls-tree", help="Pretty print a tree object")
+argsp.add_argument("object", help="The object to show")
 
 
 def main(argv=sys.argv[1:]):
@@ -487,3 +489,20 @@ def log_graphviz(repo, sha, seen):
         p = p.decode("ascii")
         print("c_{} -> c_{}".format(sha, p))
         log_graphviz(repo, p, seen)
+
+#############################################################
+# wyag ls-tree
+# usage: wyag ls-tree <object id>
+#############################################################
+
+
+def cmd_ls_tree(args):
+    repo = repo_find()
+    obj = object_read(repo, object_find(repo, args.object, fmt=b'tree'))
+
+    for item in obj.items:
+        # <mode> <object type> <sha> \t <path>
+        print("{} {} {}\t{}".format(
+            "0" * (6 - len(item.mode)) + item.mode.decode("ascii"),
+            object_read(repo, item.sha).fmt.decode("ascii"), item.sha,
+            item.path.decode("ascii")))
