@@ -33,6 +33,10 @@ argsp.add_argument("commit", default="HEAD", nargs="?",
                    help="Commit to start at")
 argsp = argsubparsers.add_parser("ls-tree", help="Pretty print a tree object")
 argsp.add_argument("object", help="The object to show")
+argsp = argsubparsers.add_parser(
+    "checkout", help="Checkout a commit inside of a directory")
+argsp.add_argument("commit", help="The commit or tree to checkout")
+argsp.add_argument("path", help="The empty directory to checkout on")
 
 
 def main(argv=sys.argv[1:]):
@@ -398,6 +402,20 @@ def tree_serialize(obj):
         ret += sha.to_bytes(20, byteorder="big")
     return ret
 
+
+def tree_checkout(repo, tree, path):
+    for item in tree.item:
+        obj = object_read(repo, item.sha)
+        dst = os.path.join(path, item.path)
+
+        if obj.fmt == b'tree':
+            os.mkdir(dst)
+            tree_checkout(repo, obj, dst)
+        elif obj.fmt == b'blob':
+            with open(dst, 'wb') as f:
+                f.write(obj.blobdata)
+
+
 #############################################################
 # wyag init
 # usage: wyag init <path>
@@ -506,3 +524,27 @@ def cmd_ls_tree(args):
             "0" * (6 - len(item.mode)) + item.mode.decode("ascii"),
             object_read(repo, item.sha).fmt.decode("ascii"), item.sha,
             item.path.decode("ascii")))
+
+
+#############################################################
+# wyag checkout
+# usage: wyag checkout <commit> <path>
+#############################################################
+
+
+def cmd_checkout(args):
+    repo = repo_find()
+    obj = object_read(repo, object_find(repo, args.commit))
+
+    if obj.fmt == b'commit':
+        obj = object_read(repo, obj.kvlm[b'tree'].decode("ascii"))
+
+    if os.path.exists(args.path):
+        if not os.path.isdir(args.path):
+            raise Exception("Not a directory {}".format(args.path))
+        if os.listdir(args.path):
+            raise Exception("Not empty {}".format(args.path))
+    else:
+        os.makedirs(args.path)
+
+    tree_checkout(repo, obj, os.path.realpath(args.path).encode())
