@@ -38,6 +38,12 @@ argsp = argsubparsers.add_parser(
 argsp.add_argument("commit", help="The commit or tree to checkout")
 argsp.add_argument("path", help="The empty directory to checkout on")
 argsp = argsubparsers.add_parser("show-ref", help="List references")
+argsp = argsubparsers.add_parser("tag", help="List and create tags")
+argsp.add_argument("-a", action="store_true",
+                   dest="create_tag_object", help="Whether to create a tag object")
+argsp.add_argument("name", nargs="?", help="The new tag's name")
+argsp.add_argument("object", default="HEAD", nargs="?",
+                   help="The object the nte tag will point to")
 
 
 def main(argv=sys.argv[1:]):
@@ -601,3 +607,25 @@ def show_ref(repo, refs, with_hash=True, prefix=""):
         else:
             show_ref(repo, v, with_hash=with_hash, prefix="{}{}{}".format(
                 prefix, "/" if prefix else "", k))
+
+#############################################################
+# wyag tag
+# usage: wyag tag                         # list all tags
+# usage: wyag tag <name> [<object id>]    # create a new lightweight tag <name>,
+#                                         # pointing to HEAD (default) or <object id>
+# usage: wyag tag -a <name> [<object id>] # create a new tag object <name>,
+#                                         # pointing to HEAD (default) or <object id>
+#############################################################
+
+
+def cmd_tag(args):
+    repo = repo_find()
+    if args.name:
+        tag_create(args.name, args.object,
+                   type="object" if args.create_tag_object else "ref")
+    else:
+        refs = ref_list(repo)
+        show_ref(repo, refs["tags"], with_hash=False)
+
+# TODO: implement tag_create()
+# def tag_create()
