@@ -264,6 +264,47 @@ class GitTag(GitCommit):
     fmt = b'tag'
 
 
+class GitIndexEntry(object):
+    # The last time a file's metadata changed.  This is a tuple (seconds, nanoseconds)
+    ctime = None
+
+    # The last time a file's data changed.  This is a tuple (seconds, nanoseconds)
+    mtime = None
+
+    # The ID of device containing this file
+    dev = None
+
+    # The file's inode number
+    ino = None
+
+    # The object type, either b1000 (regular), b1010 (symlink), b1110 (gitlink).
+    mode_type = None
+
+    # The object permissions, an integer.
+    mode_perms = None
+
+    # User ID of owner
+    uid = None
+
+    # Group ID of ownner
+    gid = None
+
+    # Size of this object, in bytes
+    size = None
+
+    # The object's hash as a hex string
+    obj = None
+
+    flag_assume_valid = None
+    flag_extended = None
+    flag_stage = None
+
+    # Length of the name if < 0xFFF (yes, three Fs), -1 otherwise
+    flag_name_length = None
+
+    name = None
+
+
 def object_read(repo, sha):
     """Read object sha from Git repository repo. Return a GitObject whose exact type depends on the object."""
     path = repo_file(repo, "objects", sha[0:2], sha[2:])
